@@ -1,0 +1,64 @@
+// Keywords: 
+
+// set up a simple neutral simulation
+initialize()
+{
+	// define here the name of the files
+	defineConstant("file_output1","./collect_par_mutations.txt"); // output file
+    
+	// set the overall mutation rate
+	initializeMutationRate(1.6e-9);
+
+	// m1 mutation type: neutral, m2 mutation type: deleterious, m3 mutation type: overdominant
+	initializeMutationType("m1", 0.5, "f", 0.0);
+	initializeMutationType("m2", 0.0, "g", -0.2, 0.33);
+	initializeMutationType("m3", 1.5, "f", 0.02);
+
+	// g1 genomic element type: uses m1 and m2 with a proportion
+	initializeGenomicElementType("g1", c(m1,m2,m3), c(0.80,0.20,0.0));
+	
+	// chromosome length 
+	initializeGenomicElement(g1, 0, 89978126-1);	
+
+    // read chr recombination map
+	lines = readFile("recombination_map_chr2_1trozo_escalado.txt");
+	rates = NULL;
+	ends = NULL;
+
+	for (line in lines)
+	{
+		components = strsplit(line, "\t");
+		ends = c(ends, asInteger(components[0]));
+		rates = c(rates, asFloat(components[1]));
+	}
+
+	ends = c(ends[1:(size(ends)-1)] - 2, 89978126);
+	rates = rates * 1e-8;
+	initializeRecombinationRate(rates, ends);
+    
+	writeFile(filePath=file_output1,contents=(""),append=F);
+}
+
+// create a population of 10000 individuals
+1 {
+	sim.addSubpop("p1", 10000);
+}
+
+mutation(m2) {
+    K = 7.6;
+    mut.setValue("hh", runif(1,0,exp(K*mut.selectionCoeff)));
+	writeFile(filePath=file_output1,contents=(mut.getValue("hh") + "\t" + mut.selectionCoeff + "\t" + mut.position),append=T);
+    //debugging 	
+    return T;
+}
+fitness(m2) {	
+    hh = homozygous? 1 else mut.getValue("hh");	
+    return 1.0 + hh * mut.selectionCoeff; // 1 + hs
+}
+
+// run to generation
+10000 late()
+{
+	sim.outputFull();
+	//sim.simulationFinished();
+ }
