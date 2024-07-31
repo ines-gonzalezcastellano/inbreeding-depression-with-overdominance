@@ -1,0 +1,2 @@
+time gcc -o SIMOVERDOM -w -O SIMOVERDOM.c ./genlib.c -lm
+time gcc -o SNP_BP_SLIM3_2 -w -O SNP_BP_SLIM3_2.c ./genlib.c -lm
