@@ -1,0 +1,85 @@
+
+./plink --file data --make-bed --out data  
+#creates a new PLINK 1 binary fileset
+# obtienes el .bed (tabla de genotipos bialélicos binarios PLINK), .bim (archivo MAP extendido) y .fam (archivo de información de muestra PLINK)
+
+./gcta-1.94.1  --bfile data  --autosome  --ibc  --out data
+# ibc calculates three inbreeding coefficients for each sample
+
+sed '1d' data.ibc > temp1  
+#quitar primera FILA
+
+awk '{print ($4" "$5" "$6)}' temp1 > temp2 
+#quedarte con las COLUMNAS 4, 5 y 6 (fhats I, II y III)
+
+rm temp1
+
+
+
+./plink --file data -het -out dataF
+sed '1d' dataF.het > temp3
+awk '{print ($3/$5)}' temp3 > temp4  # O(HOM)/N(NM)???
+awk '{print ($6)}' temp3 > temp5  #F
+rm temp3
+
+
+
+./plink --file data --indep-pairwise 50 5 0.9 --out prunned    
+#window size, a variant count to shift the window at the end of each step and a variance inflation factor (VIF) threshold (to remove highly linked SNPs (r2 > 0.9))
+./plink --file data --make-bed --recode --extract prunned.prune.in --out data_prunned
+#data.prune.in los que te quedas y out los que no (están muy ligados), por lo que pone aquí y lo que veo que saca en este paso ya solo te quedas los in
+
+
+
+
+
+#runs of homozygosity de 100 kb PARA VER FROH0,1 (0,1 Mb)
+./plink --file data_prunned  --homozyg-kb 100 --homozyg --out data
+sed '1d' data.hom.indiv > temp6
+#quitar la primera fila  
+awk '{print ($5/135504)}' temp6 > temp7
+#dividir la quinta columna (kb) entre la longitud del genoma (entiendo que estará haciendo Lroh/Lgenoma)
+rm temp6
+rm data.hom.indiv
+
+
+
+
+#runs of homozygosity de 100 kb PARA VER FROH1 (1 Mb)
+./plink --file data_prunned  --homozyg-kb 1000 --homozyg --out data
+sed '1d' data.hom.indiv > temp8
+awk '{print ($5/135504)}' temp8 > temp9
+rm temp8
+
+
+
+
+#runs of homozygosity de 100 kb PARA VER FROH5 (5 Mb)
+rm data.hom.indiv
+./plink --file data_prunned  --homozyg-kb 5000 --homozyg --out data
+sed '1d' data.hom.indiv > temp10
+awk '{print ($5/135504)}' temp10 > temp11
+rm temp10
+
+
+
+#lo metes todo en el mismo fichero
+#temp2  fhats I, II y III
+#temp4  O(HOM)/N(NM) FHOM: proporción de homocigotos
+#temp5  F  (FLH1 en el artículo de 2022) ESTE DEBE SER Fexh
+#temp7  FROH0,1
+#temp9  FROH1
+#temp11 FROH5
+
+
+paste qt.phe temp2 temp4 temp5 temp7 temp9 temp11 > temp12   #qt.phe: cuantitative phenotype, te lo saca el programa
+
+#limpiar y cambiarle el nombre a data.F
+rm temp2   
+rm temp4    
+rm temp5    
+rm temp7    
+rm temp9
+rm temp11
+mv temp12 data.F
+
